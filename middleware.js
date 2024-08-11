@@ -14,7 +14,7 @@ const adminAuthMiddleware = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.id = decoded.id;
-
+    
     if (decoded.role == "TEACHER" || decoded.role == "PRINCIPAL") next();
     else res.status(400).send({message:"Not sufficient permission"});
 

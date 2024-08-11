@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,39 +8,39 @@ datasource db {
 }
 
 model User {
-  id                String      @id @default(uuid())
-  name              String       
-  email             String      @unique
-  password          String
-  role              Role
-  classrooms        Classroom[] @relation("UserClassrooms")
-  assignedClassroom Classroom?  @relation("TeacherClassroom")
-  classroomId       String?
+  id          String      @id @default(uuid())
+  name        String       
+  email       String      @unique
+  password    String
+  role        Role
+  classroom   Classroom?  @relation("StudentClassroom", fields: [classroomId], references: [id],onDelete: Cascade)
+  classroomId String?
+  teaching    Classroom?  @relation("TeacherClassroom")
 }
 
 model Classroom {
-  id        String        @id @default(uuid())
+  id        String      @id @default(uuid())
   name      String
   schedules Schedule[]
-  students  User[]     @relation("UserClassrooms")
-  teacher   User?      @relation("TeacherClassroom", fields: [teacherId], references: [id])
-  teacherId String? @unique
-  timetable Timetable[]
+  students  User[]      @relation("StudentClassroom")
+  teacher   User?       @relation("TeacherClassroom", fields: [teacherId], references: [id],onDelete: SetNull)
+  teacherId String?     @unique
 }
 
 model Schedule {
   id          String       @id @default(uuid())
-  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  classroom   Classroom @relation(fields: [classroomId], references: [id],onDelete: Cascade)
   classroomId String
   day         Days
   startTime   DateTime
   endTime     DateTime
+  lectures    Lecture[]
 }
 
-model Timetable {
+model Lecture {
   id          String       @id @default(uuid())
-  classroom   Classroom @relation(fields: [classroomId], references: [id])
-  classroomId String
+  schedule    Schedule @relation(fields: [scheduleId], references: [id],onDelete: Cascade)
+  scheduleId  String
   subject     String
   startTime   DateTime
   endTime     DateTime

@@ -4,7 +4,7 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
 import bcrypt from "bcryptjs";
-import { adminAuthMiddleware,principalAuthMiddleware } from "../middleware.js";
+import { adminAuthMiddleware, principalAuthMiddleware } from "../middleware.js";
 
 config();
 const router = Router();
@@ -66,8 +66,8 @@ const studentSigninSchema = z.object({
 const updateSchema = z.object({
   id: z.string(),
   email: z.string().email("Invalid email address").optional(),
-  name:z.string().optional(),
-  role:z.string().optional(),
+  name: z.string().optional(),
+  role: z.string().optional(),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters long")
@@ -75,7 +75,8 @@ const updateSchema = z.object({
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[\W_]/, "Password must contain at least one special character").optional()
+    .regex(/[\W_]/, "Password must contain at least one special character")
+    .optional(),
 });
 
 //classroom zod validation
@@ -263,11 +264,93 @@ router.post("/account/student/signin", async (req, res) => {
   }
 });
 
+//fetching students
+router.get("/account/student", async (req, res) => {
+  try {
+    const data = await prisma.user.findMany({
+      where: {
+        role: STUDENT,
+      },
+    });
+
+    console.log(data);
+
+    res.status(200).send({
+      data,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal Server Error at fetching all students",
+      error: err,
+    });
+  }
+});
+
+//fetching timetable by classId
+router.get("classroom/:classId/timetable", async (req, res) => {
+  try {
+    const classroomId = req.params.classId;
+
+    const classroom = await prisma.classroom.findUnique({
+      where: { id: classroomId },
+      include: {
+        schedules: {
+          include: {
+            lectures: true,
+          },
+        },
+      },
+    });
+
+    if (!classroom) {
+      return res.status(400).send({
+        message: "Classroom not found",
+      });
+    }
+
+    res.status(200).send(classroom);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal Server Error while fetching timetable",
+      error: err.message,
+    });
+  }
+});
+
+
 //defining teacher and principal middleware route
 router.use(adminAuthMiddleware);
 
+//fetching students by classId
+router.get("/classroom/:id/students", async (req, res) => {
+  try {
+    const classroomId = req.params.id;
+
+    const classroom = await prisma.classroom.findUnique({
+      where: { id: classroomId },
+      include: { students: true },
+    });
+
+    if (!classroom) {
+      return res.status(400).send({
+        message: "Classroom not found",
+      });
+    }
+
+    res.status(200).send(classroom.students);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal Server Error while fetching students by classId",
+      error: err.message,
+    });
+  }
+});
 //fetching all teachers
 router.get("/account/teacher", async (req, res) => {
+  console.log("student accounts");
   try {
     const data = await prisma.user.findMany({
       where: {
@@ -287,29 +370,95 @@ router.get("/account/teacher", async (req, res) => {
   }
 });
 
-router.get("/account/student", async (req, res) => {
+router.post("/account/add/lecture", async (req, res) => {
   try {
-    const data = await prisma.user.findMany({
+    const { scheduleId, subject, startTime, endTime } = req.body;
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    const schedule = await prisma.schedule.findUnique({
+      where: { id: scheduleId },
+    });
+
+    if (!schedule) {
+      return res.status(404).send({
+        message: "Schedule not found",
+      });
+    }
+
+    if (start < schedule.startTime || end > schedule.endTime) {
+      return res.status(400).send({
+        message: "Lecture timings are out of schedule timing",
+      });
+    }
+    const overlappingLectures = await prisma.lecture.findMany({
       where: {
-        role: STUDENT,
+        scheduleId: scheduleId,
+        OR: [
+          {
+            startTime: { lt: end },
+            endTime: { gt: start },
+          },
+        ],
+      },
+    });
+
+    if (overlappingLectures.length > 0) {
+      return res.status(400).send({
+        message: "Lecture timings overlap with existing lectures",
+      });
+    }
+    const lecture = await prisma.lecture.create({
+      data: {
+        scheduleId: scheduleId,
+        subject,
+        startTime: start,
+        endTime: end,
       },
     });
 
     res.status(200).send({
-      data,
+      message: `Lecture ${subject} added successfully in the schedule`,
+      lecture,
     });
   } catch (err) {
     console.log(err);
     res.status(500).send({
-      message: "Internal Server Error at fetching all students",
-      error: err,
+      message: "Internal server error while adding lecture",
     });
   }
 });
 
-//defining principal middleware
-router.use(principalAuthMiddleware)
+//deleting user route
+router.delete("/account/student/delete", async (req, res) => {
+  try {
+    const { userId } = req.body;
 
+    if (!userId) {
+      return res.status(400).send({
+        message: "User ID is required",
+      });
+    }
+
+    const deletedUser = await prisma.user.delete({
+      where: { id: userId, role: STUDENT },
+    });
+
+    res.status(200).send({
+      message: "User successfully deleted",
+      user: deletedUser,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal Server Error while deleting user",
+      error: err.message,
+    });
+  }
+});
+//defining principal middleware
+router.use(principalAuthMiddleware);
 
 //classroom creation
 router.post("/account/classroom", async (req, res) => {
@@ -335,7 +484,44 @@ router.post("/account/classroom", async (req, res) => {
   }
 });
 
+router.post("/account/add/schedule", async (req, res) => {
+  try {
+    const { classroomId, day, startTime, endTime } = req.body;
 
+    const existingSchedule = await prisma.schedule.findFirst({
+      where: {
+        classroomId: classroomId,
+        day: day,
+      },
+    });
+
+    if (existingSchedule) {
+      return res.status(400).send({
+        message: "Classroom already has a schedule on this day",
+      });
+    }
+
+    const schedule = await prisma.schedule.create({
+      data: {
+        classroomId: classroomId,
+        day,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+      },
+    });
+
+    res.status(200).send({
+      message: `schedule created for class with id ${classroomId}`,
+      schedule,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal server error while adding schedule",
+    });
+  }
+});
+//update route
 router.put("/account/update", async (req, res) => {
   try {
     const { success } = await updateSchema.safeParse(req.body);
@@ -345,35 +531,117 @@ router.put("/account/update", async (req, res) => {
       });
     }
 
-    const { id,name, email, password, role } = req.body;
+    const { id, name, email, password, role } = req.body;
     let hashedPassword;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
     const updatedUser = await prisma.user.update({
-        where: {
-          id: id,
-        },
-        data: {
-          name,
-          email,
-          password: hashedPassword, 
-          role,
-        },
-      });
+      where: {
+        id: id,
+      },
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+      },
+    });
 
-      return res.status(200).send({
-        message: "User updated successfully",
-        id,
-      });
-
+    return res.status(200).send({
+      message: "User updated successfully",
+      id,
+    });
   } catch (err) {
     console.log(err);
     res.status(500).send({
-        message:"Internal Server Error while updating user",
-        error:err
-    })
+      message: "Internal Server Error while updating user",
+      error: err,
+    });
+  }
+});
+
+//assigning users route
+router.put("/assign/teacher", async (req, res) => {
+  try {
+    const { teacherID, classID } = req.body;
+
+    // check for already assigned entries
+
+    const updatedClass = await prisma.Classroom.update({
+      where: {
+        id: classID,
+      },
+      data: {
+        teacherId: teacherID,
+      },
+    });
+
+    if (updatedClass)
+      res.status(200).send({
+        message: `${teacherID} assigned to class with id ${classID}`,
+      });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ message: "Internal Server Error while assigning teacher" });
+  }
+});
+
+router.put("/assign/student", async (req, res) => {
+  try {
+    const { studentID, classID } = req.body;
+
+    // check for already assigned entries
+
+    const updatedStudent = await prisma.User.update({
+      where: {
+        id: studentID,
+      },
+      data: {
+        classroomId: classID,
+      },
+    });
+
+    if (updatedStudent)
+      res.status(200).send({
+        message: `${studentID} assigned to class with id ${classID}`,
+      });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ message: "Internal Server Error while assigning teacher" });
+  }
+});
+
+//deleting user route
+router.delete("/account/teacher/delete", async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).send({
+        message: "User ID is required",
+      });
+    }
+
+    const deletedUser = await prisma.user.delete({
+      where: { id: userId, role: TEACHER },
+    });
+
+    res.status(200).send({
+      message: "User successfully deleted",
+      user: deletedUser,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal Server Error while deleting user",
+      error: err.message,
+    });
   }
 });
 
