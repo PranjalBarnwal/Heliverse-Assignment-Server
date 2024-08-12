@@ -109,6 +109,7 @@ router.post("/account/teacher/signup", async (req, res) => {
 
 router.post("/account/teacher/signin", async (req, res) => {
   try {
+    
     const { success } = teacherSigninSchema.safeParse(req.body);
     if (!success) {
       return res.status(400).send({
@@ -421,7 +422,7 @@ router.get("classroom/:classId/timetable", async (req, res) => {
 
 //fetch classroom by teacherId
 router.get("/classroom/teacher/:id", async (req, res) => {
-  console.log("Hello");
+ 
   const teacherId = req.params.id;
   try {
     const teacher = await prisma.user.findUnique({
@@ -489,10 +490,12 @@ router.get("/teacher/:id/students", async (req, res) => {
   }
 });
 
+//adding lectures
 router.post("/account/add/lecture", async (req, res) => {
   try {
+    console.log(req.body);
     const { scheduleId, subject, startTime, endTime } = req.body;
-
+    
     const start = new Date(startTime);
     const end = new Date(endTime);
 
@@ -545,6 +548,33 @@ router.post("/account/add/lecture", async (req, res) => {
     console.log(err);
     res.status(500).send({
       message: "Internal server error while adding lecture",
+    });
+  }
+});
+//removing lectures
+router.post("/account/remove/lecture", async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).send({
+        message: "Lecture ID is required",
+      });
+    }
+
+    // Find and delete the lecture
+    const lecture = await prisma.lecture.delete({
+      where: { id },
+    });
+
+    res.status(200).send({
+      message: "Lecture removed successfully",
+      lecture,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal server error while removing lecture",
     });
   }
 });
