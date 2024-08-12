@@ -134,8 +134,6 @@ router.post("/account/teacher/signup", async (req, res) => {
 
 router.post("/account/teacher/signin", async (req, res) => {
   try {
-    
-    
     const { success } = teacherSigninSchema.safeParse(req.body);
     if (!success) {
       return res.status(400).send({
@@ -163,13 +161,12 @@ router.post("/account/teacher/signin", async (req, res) => {
       { id: user.id, role: user.role },
       process.env.JWT_SECRET
     );
-    
-    
+
     return res.status(200).send({
       message: "Log in successfull",
       token: token,
-      role:user.role,
-      userid:user.id
+      role: user.role,
+      userid: user.id,
     });
   } catch (err) {
     console.log(err);
@@ -260,8 +257,8 @@ router.post("/account/student/signin", async (req, res) => {
     return res.status(200).send({
       message: "Log in successfull",
       token: token,
-      role:user.role,
-      userid:user.id
+      role: user.role,
+      userid: user.id,
     });
   } catch (err) {
     console.log(err);
@@ -302,8 +299,8 @@ router.post("/account/principal/signin", async (req, res) => {
     return res.status(200).send({
       message: "Log in successful",
       token: token,
-      role:user.role,
-      userid:user.id
+      role: user.role,
+      userid: user.id,
     });
   } catch (err) {
     console.log(err);
@@ -313,6 +310,53 @@ router.post("/account/principal/signin", async (req, res) => {
   }
 });
 
+//fetching students by student id
+router.get("/classroom/student/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const student = await prisma.user.findUnique({
+      where: {
+        id: id,
+      },
+      include: {
+        classroom: {
+          include: {
+            teacher: {
+              select: {
+                name: true,
+              },
+            },
+            schedules: true, 
+            students: true,
+          },
+        },
+      },
+    });
+
+    if (!student || !student.classroom) {
+      return res.status(404).send({
+        message: "Student or classroom not found",
+      });
+    }
+
+    res.status(200).send({
+      classroomName: student.classroom.name,
+      teacherName: student.classroom.teacher?.name,
+      students: student.classroom.students,
+      schedules: student.classroom.schedules,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal Server Error at fetching student's class details",
+      error: err,
+    });
+  }
+});
+
+
+
 //fetching students
 router.get("/account/student", async (req, res) => {
   try {
@@ -321,7 +365,7 @@ router.get("/account/student", async (req, res) => {
         role: STUDENT,
       },
       include: {
-        classroom: true, 
+        classroom: true,
       },
     });
 
@@ -368,7 +412,6 @@ router.get("/classroom/:id", async (req, res) => {
   }
 });
 
-
 //fetching timetable by classId
 router.get("classroom/:classId/timetable", async (req, res) => {
   try {
@@ -401,9 +444,6 @@ router.get("classroom/:classId/timetable", async (req, res) => {
   }
 });
 
-//defining teacher and principal middleware route
-router.use(adminAuthMiddleware);
-
 //fetch classroom by teacherId
 router.get("/classroom/teacher/:id", async (req, res) => {
   console.log("Hello");
@@ -415,16 +455,15 @@ router.get("/classroom/teacher/:id", async (req, res) => {
         teaching: {
           include: {
             schedules: {
-              include:{
-                lectures:true
-              }
+              include: {
+                lectures: true,
+              },
             },
           },
         },
       },
     });
-    
-    
+
     if (!teacher || !teacher.teaching) {
       return res.status(400).json({
         message: "Classroom not found for the given teacher",
@@ -441,11 +480,14 @@ router.get("/classroom/teacher/:id", async (req, res) => {
   }
 });
 
+//defining teacher and principal middleware route
+router.use(adminAuthMiddleware);
+
 //fetching students by teacherId
 router.get("/teacher/:id/students", async (req, res) => {
   try {
     const teacherId = req.params.id;
-    
+
     const teacher = await prisma.user.findUnique({
       where: { id: teacherId },
       include: { teaching: true },
@@ -459,7 +501,7 @@ router.get("/teacher/:id/students", async (req, res) => {
 
     const students = await prisma.user.findMany({
       where: { classroomId: teacher.teaching.id },
-      include:{classroom:true}
+      include: { classroom: true },
     });
 
     res.status(200).send(students);
@@ -471,7 +513,6 @@ router.get("/teacher/:id/students", async (req, res) => {
     });
   }
 });
-
 
 router.post("/account/add/lecture", async (req, res) => {
   try {
@@ -543,7 +584,7 @@ router.put("/account/update/student", async (req, res) => {
       });
     }
     console.log("before");
-    
+
     const { id, name, email, password, role } = req.body;
     console.log("after");
     let hashedPassword;
@@ -565,7 +606,7 @@ router.put("/account/update/student", async (req, res) => {
 
     return res.status(200).send({
       message: "User updated successfully",
-      updatedUser
+      updatedUser,
     });
   } catch (err) {
     console.log(err);
@@ -636,7 +677,7 @@ router.get("/allclassrooms", async (req, res) => {
     const classrooms = await prisma.classroom.findMany({
       include: {
         teacher: true,
-        schedules: {   
+        schedules: {
           select: {
             day: true,
             startTime: true,
@@ -657,8 +698,6 @@ router.get("/allclassrooms", async (req, res) => {
     });
   }
 });
-
-
 
 //fetching all teachers
 router.get("/account/teacher", async (req, res) => {
@@ -692,8 +731,12 @@ router.get("/account/teacher", async (req, res) => {
 //add schedule
 router.post("/account/add/schedule", async (req, res) => {
   try {
+    console.log("schedule");
     const { classroomId, day, startTime, endTime } = req.body;
-
+    if (!classroomId || !day || !startTime || !endTime)
+      res.status(400).send({
+        message: "Please enter all fields",
+      });
     const existingSchedule = await prisma.schedule.findFirst({
       where: {
         classroomId: classroomId,
@@ -715,7 +758,7 @@ router.post("/account/add/schedule", async (req, res) => {
         endTime: new Date(endTime),
       },
     });
-
+    
     res.status(200).send({
       message: `schedule created for class with id ${classroomId}`,
       schedule,
@@ -738,7 +781,7 @@ router.put("/account/update", async (req, res) => {
       });
     }
     console.log("before");
-    
+
     const { id, name, email, password, role } = req.body;
     console.log("after");
     let hashedPassword;
@@ -760,7 +803,7 @@ router.put("/account/update", async (req, res) => {
 
     return res.status(200).send({
       message: "User updated successfully",
-      updatedUser
+      updatedUser,
     });
   } catch (err) {
     console.log(err);
@@ -787,7 +830,6 @@ router.put("/assign/teacher", async (req, res) => {
         message: `Teacher with id ${teacherID} is already assigned to class with id ${existingTeacherAssignment.id}`,
       });
     }
-
 
     const existingClass = await prisma.Classroom.findUnique({
       where: {
@@ -825,7 +867,7 @@ router.put("/assign/teacher", async (req, res) => {
   }
 });
 
-//unassigning teacher 
+//unassigning teacher
 router.put("/unassign/teacher", async (req, res) => {
   try {
     const { classID } = req.body;
@@ -869,7 +911,6 @@ router.put("/unassign/teacher", async (req, res) => {
     });
   }
 });
-
 
 router.put("/assign/student", async (req, res) => {
   try {
