@@ -21,10 +21,6 @@ const teacherSignupSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters long")
     .max(32, "Password must be at most 32 characters long")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[\W_]/, "Password must contain at least one special character"),
 });
 const teacherSigninSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -32,10 +28,7 @@ const teacherSigninSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters long")
     .max(32, "Password must be at most 32 characters long")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[\W_]/, "Password must contain at least one special character"),
+
 });
 
 //student zod validation
@@ -46,10 +39,7 @@ const studentSignupSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters long")
     .max(32, "Password must be at most 32 characters long")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[\W_]/, "Password must contain at least one special character"),
+    
 });
 const studentSigninSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -57,10 +47,7 @@ const studentSigninSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters long")
     .max(32, "Password must be at most 32 characters long")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[\W_]/, "Password must contain at least one special character"),
+   
 });
 
 //user update zod validation
@@ -73,10 +60,6 @@ const updateSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters long")
     .max(32, "Password must be at most 32 characters long")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[\W_]/, "Password must contain at least one special character")
     .optional(),
 });
 
