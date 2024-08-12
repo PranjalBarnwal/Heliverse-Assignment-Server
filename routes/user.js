@@ -19,15 +19,12 @@ const teacherSignupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters long")
-    .max(32, "Password must be at most 32 characters long")
 });
 const teacherSigninSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters long")
-    .max(32, "Password must be at most 32 characters long")
+   
 
 });
 
@@ -37,17 +34,14 @@ const studentSignupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters long")
-    .max(32, "Password must be at most 32 characters long")
+   
     
 });
 const studentSigninSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters long")
-    .max(32, "Password must be at most 32 characters long")
-   
+    
 });
 
 //user update zod validation
@@ -58,8 +52,6 @@ const updateSchema = z.object({
   role: z.string().optional(),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters long")
-    .max(32, "Password must be at most 32 characters long")
     .optional(),
 });
 
