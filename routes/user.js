@@ -134,7 +134,7 @@ router.post("/account/teacher/signup", async (req, res) => {
 
 router.post("/account/teacher/signin", async (req, res) => {
   try {
-    console.log(req.body);
+    
     
     const { success } = teacherSigninSchema.safeParse(req.body);
     if (!success) {
@@ -147,7 +147,7 @@ router.post("/account/teacher/signin", async (req, res) => {
         email: req.body.email,
       },
     });
-
+    // console.log("User id",user);
     if (!user || user.role !== TEACHER) {
       return res.status(400).json({ message: "Incorrect credentials" });
     }
@@ -163,11 +163,13 @@ router.post("/account/teacher/signin", async (req, res) => {
       { id: user.id, role: user.role },
       process.env.JWT_SECRET
     );
-
+    
+    
     return res.status(200).send({
       message: "Log in successfull",
       token: token,
-      role:user.role
+      role:user.role,
+      userid:user.id
     });
   } catch (err) {
     console.log(err);
@@ -258,7 +260,8 @@ router.post("/account/student/signin", async (req, res) => {
     return res.status(200).send({
       message: "Log in successfull",
       token: token,
-      role:user.role
+      role:user.role,
+      userid:user.id
     });
   } catch (err) {
     console.log(err);
@@ -299,7 +302,8 @@ router.post("/account/principal/signin", async (req, res) => {
     return res.status(200).send({
       message: "Log in successful",
       token: token,
-      role:user.role
+      role:user.role,
+      userid:user.id
     });
   } catch (err) {
     console.log(err);
@@ -400,28 +404,69 @@ router.get("classroom/:classId/timetable", async (req, res) => {
 //defining teacher and principal middleware route
 router.use(adminAuthMiddleware);
 
-
-//fetching students by classId
-router.get("/classroom/:id/students", async (req, res) => {
+//fetch classroom by teacherId
+router.get("/classroom/teacher/:id", async (req, res) => {
+  console.log("Hello");
+  const teacherId = req.params.id;
   try {
-    const classroomId = req.params.id;
-
-    const classroom = await prisma.classroom.findUnique({
-      where: { id: classroomId },
-      include: { students: true },
+    const teacher = await prisma.user.findUnique({
+      where: { id: teacherId },
+      include: {
+        teaching: {
+          include: {
+            schedules: {
+              include:{
+                lectures:true
+              }
+            },
+          },
+        },
+      },
     });
-
-    if (!classroom) {
-      return res.status(400).send({
-        message: "Classroom not found",
+    
+    
+    if (!teacher || !teacher.teaching) {
+      return res.status(400).json({
+        message: "Classroom not found for the given teacher",
       });
     }
 
-    res.status(200).send(classroom.students);
+    res.status(200).send(teacher.teaching);
+  } catch (error) {
+    console.error("Error fetching classroom by teacher ID:", error);
+    res.status(500).json({
+      message: "Internal Server Error while fetching classroom by teacher ID",
+      error: error.message,
+    });
+  }
+});
+
+//fetching students by teacherId
+router.get("/teacher/:id/students", async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+    
+    const teacher = await prisma.user.findUnique({
+      where: { id: teacherId },
+      include: { teaching: true },
+    });
+
+    if (!teacher || !teacher.teaching) {
+      return res.status(400).send({
+        message: "Teacher or classroom not found",
+      });
+    }
+
+    const students = await prisma.user.findMany({
+      where: { classroomId: teacher.teaching.id },
+      include:{classroom:true}
+    });
+
+    res.status(200).send(students);
   } catch (err) {
     console.log(err);
     res.status(500).send({
-      message: "Internal Server Error while fetching students by classId",
+      message: "Internal Server Error while fetching students by teacherId",
       error: err.message,
     });
   }
@@ -484,6 +529,49 @@ router.post("/account/add/lecture", async (req, res) => {
     console.log(err);
     res.status(500).send({
       message: "Internal server error while adding lecture",
+    });
+  }
+});
+
+//update route for students
+router.put("/account/update/student", async (req, res) => {
+  try {
+    const { success } = await updateSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).send({
+        message: "Incorrect Inputs",
+      });
+    }
+    console.log("before");
+    
+    const { id, name, email, password, role } = req.body;
+    console.log("after");
+    let hashedPassword;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: id,
+      },
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+      },
+    });
+
+    return res.status(200).send({
+      message: "User updated successfully",
+      updatedUser
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Internal Server Error while updating user",
+      error: err,
     });
   }
 });
