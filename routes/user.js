@@ -493,7 +493,7 @@ router.get("/teacher/:id/students", async (req, res) => {
 //adding lectures
 router.post("/account/add/lecture", async (req, res) => {
   try {
-    console.log(req.body);
+
     const { scheduleId, subject, startTime, endTime } = req.body;
     
     const start = new Date(startTime);
