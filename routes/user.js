@@ -45,10 +45,6 @@ const updateSchema = z.object({
   password: z.string().optional(),
 });
 
-//classroom zod validation
-const classroomSchema = z.object({
-  name: z.string(),
-});
 
 //teacher signin signup routes
 router.post("/account/teacher/signup", async (req, res) => {
@@ -640,12 +636,7 @@ router.use(principalAuthMiddleware);
 //classroom creation
 router.post("/account/classroom", async (req, res) => {
   try {
-    // const { success } = await classroomSchema.safeParse(req.body);
-    // if (!success) {
-    //   return res.status(400).send({
-    //     message: "Incorrect Inputs",
-    //   });
-    // }
+  
 
     const classroom = await prisma.Classroom.create({
       data: {
