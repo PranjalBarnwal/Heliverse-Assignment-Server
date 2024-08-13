@@ -32,8 +32,8 @@ model Schedule {
   classroom   Classroom @relation(fields: [classroomId], references: [id],onDelete: Cascade)
   classroomId String
   day         Days
-  startTime   DateTime
-  endTime     DateTime
+  startTime   String
+  endTime     String
   lectures    Lecture[]
 }
 
@@ -42,8 +42,8 @@ model Lecture {
   schedule    Schedule @relation(fields: [scheduleId], references: [id],onDelete: Cascade)
   scheduleId  String
   subject     String
-  startTime   DateTime
-  endTime     DateTime
+  startTime   String
+  endTime     String
 }
 
 enum Role {

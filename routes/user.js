@@ -17,31 +17,22 @@ const PRINCIPAL = "PRINCIPAL";
 const teacherSignupSchema = z.object({
   name: z.string(),
   email: z.string().email("Invalid email address"),
-  password: z
-    .string()
+  password: z.string(),
 });
 const teacherSigninSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z
-    .string()
-   
-
+  password: z.string(),
 });
 
 //student zod validation
 const studentSignupSchema = z.object({
   name: z.string(),
   email: z.string().email("Invalid email address"),
-  password: z
-    .string()
-   
-    
+  password: z.string(),
 });
 const studentSigninSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z
-    .string()
-    
+  password: z.string(),
 });
 
 //user update zod validation
@@ -50,9 +41,7 @@ const updateSchema = z.object({
   email: z.string().email("Invalid email address").optional(),
   name: z.string().optional(),
   role: z.string().optional(),
-  password: z
-    .string()
-    .optional(),
+  password: z.string().optional(),
 });
 
 //classroom zod validation
@@ -109,7 +98,6 @@ router.post("/account/teacher/signup", async (req, res) => {
 
 router.post("/account/teacher/signin", async (req, res) => {
   try {
-    
     const { success } = teacherSigninSchema.safeParse(req.body);
     if (!success) {
       return res.status(400).send({
@@ -303,7 +291,7 @@ router.get("/classroom/student/:id", async (req, res) => {
                 name: true,
               },
             },
-            schedules: true, 
+            schedules: true,
             students: true,
           },
         },
@@ -330,8 +318,6 @@ router.get("/classroom/student/:id", async (req, res) => {
     });
   }
 });
-
-
 
 //fetching students
 router.get("/account/student", async (req, res) => {
@@ -422,7 +408,6 @@ router.get("classroom/:classId/timetable", async (req, res) => {
 
 //fetch classroom by teacherId
 router.get("/classroom/teacher/:id", async (req, res) => {
- 
   const teacherId = req.params.id;
   try {
     const teacher = await prisma.user.findUnique({
@@ -493,11 +478,10 @@ router.get("/teacher/:id/students", async (req, res) => {
 //adding lectures
 router.post("/account/add/lecture", async (req, res) => {
   try {
-
     const { scheduleId, subject, startTime, endTime } = req.body;
-    
-    const start = new Date(startTime);
-    const end = new Date(endTime);
+
+    const start = startTime;
+    const end = endTime;
 
     const schedule = await prisma.schedule.findUnique({
       where: { id: scheduleId },
@@ -759,11 +743,11 @@ router.post("/account/add/schedule", async (req, res) => {
       data: {
         classroomId: classroomId,
         day,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
+        startTime: startTime,
+        endTime: endTime,
       },
     });
-    
+
     res.status(200).send({
       message: `schedule created for class with id ${classroomId}`,
       schedule,
