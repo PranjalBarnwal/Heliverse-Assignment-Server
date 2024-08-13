@@ -35,7 +35,7 @@ const studentSigninSchema = z.object({
   password: z.string(),
 });
 
-
+  
 //user update zod validation 
 const updateSchema = z.object({
   id: z.string(),
