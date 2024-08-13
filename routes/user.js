@@ -35,7 +35,8 @@ const studentSigninSchema = z.object({
   password: z.string(),
 });
 
-//user update zod validation
+
+//user update zod validation 
 const updateSchema = z.object({
   id: z.string(),
   email: z.string().email("Invalid email address").optional(),
